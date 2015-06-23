@@ -539,12 +539,12 @@ class Pulp(object):
         """turn on debug output"""
         log.setLevel(logging.DEBUG)
 
-    def updateRepo(self, id, update):
+    def updateRepo(self, rid, update):
         """
         Update metadata on a repository
         "update" is a dictionary of keys to update with new values
         """
-        log.info('updating repo %s' % id)
+        log.info('updating repo %s' % rid)
         export_id = 'docker_export_distributor_name_cli'
         web_id = 'docker_web_distributor_name_cli'
         delta = {
@@ -565,14 +565,11 @@ class Pulp(object):
         if update.has_key('tag'):
             tags, iid = update['tag'].split(':')
             new_tags = tags.split(",")
-
-            existing = self._getTags(id) # need to preserve existing tags
-            # need to wipe out existing tags for the given image
-            existing = [e for e in existing if e['image_id'] != iid]
-            # also wipe out existing tags for another images
+            existing = self._getTags(rid) # need to preserve existing tags
+            # need to wipe out existing tags for the given image and the
+            # existing tags for other images if they match
             existing = [e for e in existing if e["tag"] not in new_tags and
-                        e['image_id'] != iid]
-
+                e['image_id'] != iid]
             log.debug(existing)
             delta['delta']['scratchpad'] = {'tags': existing}
             if tags != '':
@@ -587,7 +584,7 @@ class Pulp(object):
             log.info('  no need to update the distributor configs')
             delta.pop('distributor_configs')
         log.debug('update request body: %s' % pprint.pformat(delta))
-        tid = self._put('/pulp/api/v2/repositories/%s/' % id,
+        tid = self._put('/pulp/api/v2/repositories/%s/' % rid,
             data=json.dumps(delta))
         self.watch(tid)
 
@@ -655,8 +652,7 @@ def split_content_url(url):
     i = url.find('/content')
     return url[:i], url[i:]
 
-
 def setup_logger(log):
     log.setLevel(logging.INFO)
-    logging.basicConfig(stream=sys.stdout)
+    logging.basicConfig(stream=sys.stdout, format='%(levelname)-9s %(message)s')
     return log
